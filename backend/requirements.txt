@@ -1,0 +1,17 @@
+# Web Framework
+flask==3.0.0
+flask-cors==4.0.0
+
+# Blockchain Integration
+web3==6.15.0
+
+# Environment Variables
+python-dotenv==1.0.0
+
+# HTTP Requests
+requests==2.31.0
+
+# Type Checking (Optional but recommended)
+mypy==1.7.0
+typing-extensions==4.8.0
+
