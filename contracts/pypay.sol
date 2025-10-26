@@ -179,6 +179,9 @@ contract PyPay {
     ) external onlyOperator{
         localSignature memory sigContent = signatureVerifier(sourceChainIds, amountEach, nonces, expirey, destinationChainId, targetAddress, signature);
 
+        // First, transfer PYUSD from signer to this contract
+        IERC20(PYUSDcontract[sigContent.sourceChainId]).transferFrom(signer, address(this), sigContent.amount);
+
         IOFTLikeSender.SendParam memory sendParam = IOFTLikeSender.SendParam({
             dstEid: endpointID[destinationChainId],
             to: bytes32(bytes20(targetAddress)),
@@ -194,7 +197,14 @@ contract PyPay {
             lzTokenFee: 0
         });
 
+        // Approve the OFT contract to spend our tokens (in case it needs it)
+        IERC20(PYUSDcontract[sigContent.sourceChainId]).approve(OFTcontract[destinationChainId], sigContent.amount);
+        
+        // Call OFT.send() - it will transfer tokens from this contract
         IOFTLikeSender(OFTcontract[destinationChainId]).send(sendParam, fee, signer);
+        
+        // Clear the approval to save gas
+        IERC20(PYUSDcontract[sigContent.sourceChainId]).approve(OFTcontract[destinationChainId], 0);
 
         emit CrossChainTransferEvent(sigContent.sourceChainId, sigContent.amount, sigContent.nonce, destinationChainId, targetAddress);
     }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { useComputePyPayAddress, useDeployPyPayContract } from '../hooks/useFactoryContract'
+import { FACTORY_ADDRESS, OPERATOR_ADDRESS } from '../config/constants'
 
 interface DeployPageProps {
   isEthereumDeployed: boolean
@@ -90,11 +91,11 @@ function DeployPage({ isEthereumDeployed, isArbitrumDeployed, onDeploySuccess }:
         <div className="deploy-info">
           <div className="info-item">
             <span className="info-label">Factory Contract:</span>
-            <span className="info-value">0x49aa018dC29772561795E13a09aCA3DaAF4777Be</span>
+            <span className="info-value">{FACTORY_ADDRESS}</span>
           </div>
           <div className="info-item">
             <span className="info-label">Operator:</span>
-            <span className="info-value">0x3d94E55a2C3Cf83226b3D056eBeBb43b4731417f</span>
+            <span className="info-value">{OPERATOR_ADDRESS}</span>
           </div>
           <div className="info-item">
             <span className="info-label">Your Address:</span>

@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { useAccount, useBalance } from 'wagmi'
 
 // PYUSD Contract Addresses
+import { PYUSD_ADDRESSES } from '../config/constants'
+
 const PYUSD_CONTRACTS = {
-  ethereum: '0x6c3ea9036406852006290770BEdFcAbA0e23A0e8',
-  arbitrum: '0x46850aD61C2B7d64d08c9C754F45254596696984'
+  ethereum: PYUSD_ADDRESSES[1],
+  arbitrum: PYUSD_ADDRESSES[42161]
 }
 
 function BalancePage() {

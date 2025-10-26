@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount, useReadContracts, useBytecode } from 'wagmi'
 import { FactoryABI } from './utils/contracts'
+import { FACTORY_ADDRESS, OPERATOR_ADDRESS } from './config/constants'
 import BalancePage from './components/BalancePage'
 import SendPage from './components/SendPage'
 import ReceivePage from './components/ReceivePage'
@@ -10,9 +11,6 @@ import ApprovePage from './components/ApprovePage'
 import './App.css'
 
 type Page = 'balance' | 'send' | 'receive' | 'deploy' | 'approve'
-
-const FACTORY_ADDRESS = '0x49aa018dC29772561795E13a09aCA3DaAF4777Be' as `0x${string}`
-const OPERATOR_ADDRESS = '0x3d94E55a2C3Cf83226b3D056eBeBb43b4731417f' as `0x${string}`
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('balance')

@@ -10,14 +10,14 @@ async function main() {
   console.log('開始部署 Factory 合約...');
   
   // 檢查環境變數
-  if (!process.env.PRIVATE_KEY) {
-    throw new Error('請設定 PRIVATE_KEY 環境變數');
+  if (!process.env.DEPLOYER_PRIVATE_KEY) {
+    throw new Error('請設定 DEPLOYER_PRIVATE_KEY 環境變數');
   }
   
   // 創建帳戶和客戶端
-  const privateKey = process.env.PRIVATE_KEY.startsWith('0x') 
-    ? process.env.PRIVATE_KEY as `0x${string}`
-    : `0x${process.env.PRIVATE_KEY}` as `0x${string}`;
+  const privateKey = process.env.DEPLOYER_PRIVATE_KEY.startsWith('0x') 
+    ? process.env.DEPLOYER_PRIVATE_KEY as `0x${string}`
+    : `0x${process.env.DEPLOYER_PRIVATE_KEY}` as `0x${string}`;
   const account = privateKeyToAccount(privateKey);
   
   // 從命令行參數獲取網路

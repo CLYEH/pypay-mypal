@@ -55,3 +55,22 @@ export const FactoryABI = [
   },
 ] as const
 
+// PyPay 合約 ABI (transfer function)
+export const PyPayABI = [
+  {
+    inputs: [
+      { internalType: "uint256[]", name: "sourceChainIds", type: "uint256[]" },
+      { internalType: "uint256[]", name: "amountEach", type: "uint256[]" },
+      { internalType: "uint256[]", name: "nonces", type: "uint256[]" },
+      { internalType: "uint256", name: "expiry", type: "uint256" },
+      { internalType: "uint256", name: "destinationChainId", type: "uint256" },
+      { internalType: "address", name: "targetAddress", type: "address" },
+      { internalType: "bytes", name: "signature", type: "bytes" }
+    ],
+    name: "transfer",
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+] as const
+

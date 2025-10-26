@@ -1,24 +1,27 @@
 #!/usr/bin/env python3
 """
 Main Flask application for blockchain backend.
-This backend manages wallet operations and sends transactions to the blockchain.
+This backend manages PyPay contract operations.
 """
 
 import os
+import pathlib
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 from wallet_manager import WalletManager
-from transaction_utils import TransactionUtils
+from contract_manager import ContractManager
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from root directory
+env_path = pathlib.Path(__file__).parent.parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for frontend integration
+CORS(app, resources={r"/*": {"origins": "*"}})  # Enable CORS for frontend integration
 
-# Initialize wallet manager
+# Initialize wallet manager and contract manager
 wallet_manager = WalletManager()
+contract_manager = ContractManager(wallet_manager)
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -59,36 +62,56 @@ def get_address():
             'error': str(e)
         }), 500
 
-@app.route('/send-transaction', methods=['POST'])
-def send_transaction():
-    """Send a transaction to the blockchain."""
+@app.route('/cross-chain-transfer', methods=['POST'])
+def cross_chain_transfer():
+    """Call PyPay CrossChainTransfer function."""
     try:
         data = request.json
         
         # Validate required fields
-        if not data or 'to' not in data or 'value' not in data:
+        required_fields = [
+            'contract_address', 'source_chain_ids', 'amount_each',
+            'nonces', 'expiry', 'destination_chain_id', 'target_address',
+            'signature', 'native_fee'
+        ]
+        
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
             return jsonify({
                 'success': False,
-                'error': 'Missing required fields: to, value'
+                'error': f'Missing required fields: {", ".join(missing_fields)}'
             }), 400
         
-        to_address = data['to']
-        value = data['value']
-        gas_price = data.get('gas_price')
-        gas_limit = data.get('gas_limit', 21000)
+        # Convert signature hex string to bytes
+        signature = bytes.fromhex(data['signature'].replace('0x', ''))
         
-        # Send transaction
-        tx_hash = wallet_manager.send_transaction(
-            to_address=to_address,
-            value=value,
-            gas_price=gas_price,
-            gas_limit=gas_limit
+        # Convert string arrays to int arrays
+        source_chain_ids = [int(x) for x in data['source_chain_ids']]
+        amount_each = [int(x) for x in data['amount_each']]
+        nonces = [int(x) for x in data['nonces']]
+        
+        # Convert strings to int
+        expiry = int(data['expiry'])
+        destination_chain_id = int(data['destination_chain_id'])
+        native_fee = int(data['native_fee'])
+        
+        # Call contract function
+        tx_hash = contract_manager.cross_chain_transfer(
+            contract_address=data['contract_address'],
+            source_chain_ids=source_chain_ids,
+            amount_each=amount_each,
+            nonces=nonces,
+            expiry=expiry,
+            destination_chain_id=destination_chain_id,
+            target_address=data['target_address'],
+            signature=signature,
+            native_fee=native_fee
         )
         
         return jsonify({
             'success': True,
             'tx_hash': tx_hash,
-            'message': 'Transaction sent successfully'
+            'message': 'CrossChainTransfer transaction sent successfully'
         }), 200
         
     except Exception as e:
@@ -97,35 +120,54 @@ def send_transaction():
             'error': str(e)
         }), 500
 
-@app.route('/send-contract-tx', methods=['POST'])
-def send_contract_transaction():
-    """Send a transaction to a smart contract."""
+@app.route('/transfer', methods=['POST'])
+def transfer():
+    """Call PyPay transfer function."""
     try:
         data = request.json
         
         # Validate required fields
-        if not data or 'contract_address' not in data or 'function_name' not in data:
+        required_fields = [
+            'contract_address', 'source_chain_ids', 'amount_each',
+            'nonces', 'expiry', 'destination_chain_id', 'target_address',
+            'signature'
+        ]
+        
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
             return jsonify({
                 'success': False,
-                'error': 'Missing required fields: contract_address, function_name'
+                'error': f'Missing required fields: {", ".join(missing_fields)}'
             }), 400
         
-        contract_address = data['contract_address']
-        function_name = data['function_name']
-        params = data.get('params', [])
+        # Convert signature hex string to bytes
+        signature = bytes.fromhex(data['signature'].replace('0x', ''))
         
-        # Send contract transaction
-        tx_hash = TransactionUtils.send_contract_transaction(
-            wallet_manager=wallet_manager,
-            contract_address=contract_address,
-            function_name=function_name,
-            params=params
+        # Convert string arrays to int arrays
+        source_chain_ids = [int(x) for x in data['source_chain_ids']]
+        amount_each = [int(x) for x in data['amount_each']]
+        nonces = [int(x) for x in data['nonces']]
+        
+        # Convert strings to int
+        expiry = int(data['expiry'])
+        destination_chain_id = int(data['destination_chain_id'])
+        
+        # Call contract function
+        tx_hash = contract_manager.transfer(
+            contract_address=data['contract_address'],
+            source_chain_ids=source_chain_ids,
+            amount_each=amount_each,
+            nonces=nonces,
+            expiry=expiry,
+            destination_chain_id=destination_chain_id,
+            target_address=data['target_address'],
+            signature=signature
         )
         
         return jsonify({
             'success': True,
             'tx_hash': tx_hash,
-            'message': 'Contract transaction sent successfully'
+            'message': 'Transfer transaction sent successfully'
         }), 200
         
     except Exception as e:
@@ -138,11 +180,43 @@ def send_contract_transaction():
 def get_transaction_status(tx_hash):
     """Get the status of a transaction."""
     try:
-        status = TransactionUtils.get_transaction_status(wallet_manager.web3, tx_hash)
+        status = contract_manager.get_transaction_receipt(tx_hash)
         return jsonify({
             'success': True,
             'status': status
         }), 200
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/check-cross-chain', methods=['POST'])
+def check_cross_chain():
+    """Check if cross-chain transfer has been received."""
+    try:
+        data = request.json
+        
+        required_fields = ['target_address', 'amount_expected', 'destination_chain_id']
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            return jsonify({
+                'success': False,
+                'error': f'Missing required fields: {", ".join(missing_fields)}'
+            }), 400
+        
+        result = contract_manager.check_cross_chain_received(
+            target_address=data['target_address'],
+            amount_expected=int(data['amount_expected']),
+            destination_chain_id=int(data['destination_chain_id']),
+            timeout=int(data.get('timeout', 60))
+        )
+        
+        return jsonify({
+            'success': True,
+            'result': result
+        }), 200
+        
     except Exception as e:
         return jsonify({
             'success': False,
@@ -158,7 +232,6 @@ def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
-    port = int(os.getenv('PORT', 5000))
+    port = int(os.getenv('PORT', 5002))  # Changed default to 5002 to avoid conflicts
     debug = os.getenv('DEBUG', 'False').lower() == 'true'
     app.run(host='0.0.0.0', port=port, debug=debug)
-

@@ -1,9 +1,6 @@
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { FactoryABI } from '../utils/contracts'
-
-// Factory 合約地址（Ethereum 和 Arbitrum 都一樣）
-const FACTORY_ADDRESS = '0x49aa018dC29772561795E13a09aCA3DaAF4777Be'
-const OPERATOR_ADDRESS = '0x3d94E55a2C3Cf83226b3D056eBeBb43b4731417f'
+import { FACTORY_ADDRESS, OPERATOR_ADDRESS } from '../config/constants'
 
 // 計算 PyPay 合約地址
 export function useComputePyPayAddress(address: string | undefined, chainId: number | undefined) {

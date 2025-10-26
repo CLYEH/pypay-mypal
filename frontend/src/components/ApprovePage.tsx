@@ -27,10 +27,12 @@ const ERC20_ABI = [
   }
 ] as const
 
+import { PYUSD_ADDRESSES } from '../config/constants'
+
 // PYUSD Token 地址
-const PYUSD_ADDRESSES = {
-  1: '0x6c3ea9036406852006290770BEdFcAbA0e23A0e8' as `0x${string}`, // Ethereum
-  42161: '0x46850aD61C2B7d64d08c9C754F45254596696984' as `0x${string}` // Arbitrum
+const PYUSD_TOKEN_ADDRESSES = {
+  1: PYUSD_ADDRESSES[1] as `0x${string}`,
+  42161: PYUSD_ADDRESSES[42161] as `0x${string}`
 }
 
 interface ApprovePageProps {
@@ -67,7 +69,7 @@ function ApprovePage({ isEthereumDeployed, isArbitrumDeployed }: ApprovePageProp
   
   const targetChainId = selectedChain === 'ethereum' ? 1 : 42161
   const deployedAddress = selectedChain === 'ethereum' ? ethComputedAddress : arbComputedAddress
-  const pyusdAddress = PYUSD_ADDRESSES[targetChainId as keyof typeof PYUSD_ADDRESSES]
+  const pyusdAddress = PYUSD_TOKEN_ADDRESSES[targetChainId as keyof typeof PYUSD_TOKEN_ADDRESSES]
 
   // 檢查當前的 allowance
   const { data: currentAllowance } = useReadContract({

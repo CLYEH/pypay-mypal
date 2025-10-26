@@ -8,11 +8,34 @@ import '@rainbow-me/rainbowkit/styles.css'
 import './index.css'
 import App from './App.tsx'
 
-// 使用標準公開 RPC，避免使用 demo key 導致問題
+// 配置自定義 RPC - 可以使用 Alchemy
+const ALCHEMY_KEY_ETH = import.meta.env.VITE_ALCHEMY_API_KEY_ETHEREUM
+const ALCHEMY_KEY_ARB = import.meta.env.VITE_ALCHEMY_API_KEY_ARBITRUM
+
+// 配置以太坊鏈
+const ethereumConfig = ALCHEMY_KEY_ETH ? {
+  ...mainnet,
+  rpcUrls: {
+    default: {
+      http: [`https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY_ETH}`]
+    }
+  }
+} : mainnet
+
+// 配置 Arbitrum 鏈
+const arbitrumConfig = ALCHEMY_KEY_ARB ? {
+  ...arbitrum,
+  rpcUrls: {
+    default: {
+      http: [`https://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY_ARB}`]
+    }
+  }
+} : arbitrum
+
 const config = getDefaultConfig({
   appName: 'PyPay',
   projectId: 'f8e8c7c5b3a9d1e2f4a6b8c9d0e1f2a3', // WalletConnect Project ID
-  chains: [mainnet, arbitrum], // 使用標準鏈配置，讓 wagmi 自動選擇最佳 RPC
+  chains: [ethereumConfig, arbitrumConfig],
   ssr: false,
 })
 

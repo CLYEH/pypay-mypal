@@ -24,14 +24,30 @@ class WalletManager:
         rpc_url = os.getenv('RPC_URL')
         if not rpc_url:
             network = os.getenv('NETWORK', 'mainnet')
+            alchemy_key_ethereum = os.getenv('ALCHEMY_API_KEY_ETHEREUM')
+            alchemy_key_arbitrum = os.getenv('ALCHEMY_API_KEY_ARBITRUM')
+            alchemy_key_arbitrum_sepolia = os.getenv('ALCHEMY_API_KEY_ARBITRUM_SEPOLIA')
+            
             # Default RPC URLs for different networks
-            rpc_urls = {
-                'mainnet': 'https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY',
-                'arbitrum': 'https://arb1.arbitrum.io/rpc',
-                'arbitrum-sepolia': 'https://sepolia-rollup.arbitrum.io/rpc',
-                'localhost': 'http://localhost:8545'
-            }
-            rpc_url = rpc_urls.get(network, 'https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY')
+            if network == 'mainnet' or network == 'ethereum':
+                if alchemy_key_ethereum:
+                    rpc_url = f'https://eth-mainnet.g.alchemy.com/v2/{alchemy_key_ethereum}'
+                else:
+                    raise ValueError('ALCHEMY_API_KEY_ETHEREUM not found in environment variables')
+            elif network == 'arbitrum':
+                if alchemy_key_arbitrum:
+                    rpc_url = f'https://arb-mainnet.g.alchemy.com/v2/{alchemy_key_arbitrum}'
+                else:
+                    rpc_url = 'https://arb1.arbitrum.io/rpc'
+            elif network == 'arbitrum-sepolia':
+                if alchemy_key_arbitrum_sepolia:
+                    rpc_url = f'https://arb-sepolia.g.alchemy.com/v2/{alchemy_key_arbitrum_sepolia}'
+                else:
+                    rpc_url = 'https://sepolia-rollup.arbitrum.io/rpc'
+            elif network == 'localhost':
+                rpc_url = 'http://localhost:8545'
+            else:
+                raise ValueError(f'Unknown network: {network}')
         
         # Initialize Web3 connection
         self.web3 = Web3(Web3.HTTPProvider(rpc_url))
@@ -48,6 +64,7 @@ class WalletManager:
         self.address = self.account.address
         
         print(f'Wallet initialized: {self.address}')
+        print(f'Connected to RPC: {rpc_url}')
     
     def get_address(self):
         """Get the wallet address."""
@@ -59,68 +76,4 @@ class WalletManager:
         balance_eth = self.web3.from_wei(balance_wei, 'ether')
         return str(balance_eth)
     
-    def get_balance_wei(self):
-        """Get the balance of the wallet in Wei."""
-        return self.web3.eth.get_balance(self.address)
-    
-    def send_transaction(self, to_address, value, gas_price=None, gas_limit=21000):
-        """
-        Send a transaction to the blockchain.
-        
-        Args:
-            to_address: Recipient address
-            value: Amount to send (in ETH as a string or number)
-            gas_price: Gas price in Wei (optional, will be fetched if not provided)
-            gas_limit: Gas limit (default: 21000)
-        
-        Returns:
-            Transaction hash
-        """
-        # Validate address
-        if not self.web3.is_address(to_address):
-            raise ValueError('Invalid recipient address')
-        
-        # Convert value to Wei
-        if isinstance(value, str):
-            value = float(value)
-        value_wei = self.web3.to_wei(value, 'ether')
-        
-        # Build transaction
-        transaction = {
-            'to': to_address,
-            'value': value_wei,
-            'gas': gas_limit,
-        }
-        
-        # Get gas price if not provided
-        if gas_price is None:
-            gas_price = self.web3.eth.gas_price
-        transaction['gasPrice'] = gas_price
-        
-        # Get nonce
-        nonce = self.web3.eth.get_transaction_count(self.address)
-        transaction['nonce'] = nonce
-        
-        # Sign transaction
-        signed_txn = self.account.sign_transaction(transaction)
-        
-        # Send transaction
-        tx_hash = self.web3.eth.send_raw_transaction(signed_txn.rawTransaction)
-        
-        print(f'Transaction sent: {tx_hash.hex()}')
-        return tx_hash.hex()
-    
-    def wait_for_receipt(self, tx_hash, timeout=120):
-        """
-        Wait for transaction receipt.
-        
-        Args:
-            tx_hash: Transaction hash
-            timeout: Timeout in seconds (default: 120)
-        
-        Returns:
-            Transaction receipt
-        """
-        receipt = self.web3.eth.wait_for_transaction_receipt(tx_hash, timeout=timeout)
-        return receipt
 
