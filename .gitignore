@@ -21,3 +21,5 @@
 
 # Environment variables
 .env
+
+task/
