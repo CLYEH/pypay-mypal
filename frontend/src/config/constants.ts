@@ -4,7 +4,7 @@
  */
 
 // Factory 合約地址（兩條鏈都一樣）
-export const FACTORY_ADDRESS = '0x6D8913325322690F40e45b38BC039c9F76672fc0' as `0x${string}`
+export const FACTORY_ADDRESS = '0x0ece0dca03180c05c8eb91a3790d763ed02d9b55' as `0x${string}`
 
 // Operator 後端錢包地址
 export const OPERATOR_ADDRESS = '0x3d94E55a2C3Cf83226b3D056eBeBb43b4731417f' as `0x${string}`

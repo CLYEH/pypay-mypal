@@ -228,8 +228,31 @@ function SendPage() {
         
         const contractAddressOther = await getContractAddress(address, otherChainId)
         
-        // Estimate native fee
-        const estimatedFee = targetChainIdNum === 42161 ? '5000000000000000' : '3000000000000000'
+        // Query native fee dynamically from the contract
+        setStatusMessage('Querying native fee...')
+        const feeEstimateResponse = await fetch(`${BACKEND_URL}/estimate-fee`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contract_address: contractAddressOther,
+            source_chain_id: otherChainId.toString(),
+            destination_chain_id: targetChainIdNum.toString(),
+            amount: amountEach[1].toString(),
+            target_address: address
+          }),
+        })
+        
+        const feeEstimateData = await feeEstimateResponse.json()
+        if (!feeEstimateData.success) {
+          setNotification({ message: `Failed to estimate fee: ${feeEstimateData.error}`, type: 'error' })
+          setIsSending(false)
+          setStatusMessage('')
+          return
+        }
+        
+        const estimatedFee = feeEstimateData.estimated_fee
         
         // Call cross-chain transfer for the "other" chain
         const crossChainResponse = await fetch(`${BACKEND_URL}/cross-chain-transfer`, {

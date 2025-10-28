@@ -40,6 +40,12 @@ interface IOFTLikeSender {
         external
         payable
         returns (MessagingReceipt memory msgReceipt, OFTReceipt memory oftReceipt);
+    
+    // 查詢跨鏈轉賬所需的費用
+    function quoteSend(
+        SendParam calldata _sendParam,
+        bool _payInLzToken
+    ) external view returns (MessagingFee memory fee);
 }
 
 contract PyPay {
@@ -81,6 +87,9 @@ contract PyPay {
         address targetAddress
     );
     
+    // Allow contract to receive native tokens
+    receive() external payable {}
+    
     struct localSignature{
         uint256 sourceChainId;
         uint256 amount;
@@ -110,6 +119,27 @@ contract PyPay {
             total += numbers[i];
         }
         return total;
+    }
+    
+    // 查詢跨鏈轉賬所需的 native fee
+    function getQuoteNativeFee(
+        uint256 sourceChainId,
+        uint256 destinationChainId,
+        uint256 amount,
+        address targetAddress
+    ) external view returns (uint256 nativeFee) {
+        IOFTLikeSender.SendParam memory sendParam = IOFTLikeSender.SendParam({
+            dstEid: endpointID[destinationChainId],
+            to: bytes32(bytes20(targetAddress)),
+            amountLD: amount,
+            minAmountLD: amount * 99 / 100,
+            extraOptions: "",
+            composeMsg: "",
+            oftCmd: ""
+        });
+        
+        IOFTLikeSender.MessagingFee memory fee = IOFTLikeSender(OFTcontract[sourceChainId]).quoteSend(sendParam, false);
+        return fee.nativeFee;
     }
 
     function signatureVerifier(
@@ -176,7 +206,9 @@ contract PyPay {
         address targetAddress,
         bytes memory signature,
         uint256 nativeFee
-    ) external onlyOperator{
+    ) external payable onlyOperator{
+        require(msg.value == nativeFee, "Incorrect native fee amount");
+        
         localSignature memory sigContent = signatureVerifier(sourceChainIds, amountEach, nonces, expirey, destinationChainId, targetAddress, signature);
 
         // First, transfer PYUSD from signer to this contract
@@ -184,7 +216,7 @@ contract PyPay {
 
         IOFTLikeSender.SendParam memory sendParam = IOFTLikeSender.SendParam({
             dstEid: endpointID[destinationChainId],
-            to: bytes32(bytes20(targetAddress)),
+            to: bytes32(bytes20(address(this))),
             amountLD: sigContent.amount,
             minAmountLD: sigContent.amount * 99 / 100,
             extraOptions: "",
@@ -197,14 +229,13 @@ contract PyPay {
             lzTokenFee: 0
         });
 
-        // Approve the OFT contract to spend our tokens (in case it needs it)
-        IERC20(PYUSDcontract[sigContent.sourceChainId]).approve(OFTcontract[destinationChainId], sigContent.amount);
+        // Approve the OFT contract on the SOURCE chain to spend our tokens
+        IERC20(PYUSDcontract[sigContent.sourceChainId]).approve(OFTcontract[sigContent.sourceChainId], sigContent.amount);
         
-        // Call OFT.send() - it will transfer tokens from this contract
-        IOFTLikeSender(OFTcontract[destinationChainId]).send(sendParam, fee, signer);
-        
-        // Clear the approval to save gas
-        IERC20(PYUSDcontract[sigContent.sourceChainId]).approve(OFTcontract[destinationChainId], 0);
+        // Call OFT.send() on the SOURCE chain with native fee (ETH)
+        // Refund address should be the operator since they paid for the transaction
+        // This allows OFT to return any unused native fee
+        IOFTLikeSender(OFTcontract[sigContent.sourceChainId]).send{value: msg.value}(sendParam, fee, signer);
 
         emit CrossChainTransferEvent(sigContent.sourceChainId, sigContent.amount, sigContent.nonce, destinationChainId, targetAddress);
     }

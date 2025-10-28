@@ -69,7 +69,7 @@ class ContractManager:
         
         return web3
     
-    def call_contract(self, contract_address, function_name, args, chain_id=None):
+    def call_contract(self, contract_address, function_name, args, chain_id=None, value=None):
         """
         Call a contract function.
         
@@ -78,6 +78,7 @@ class ContractManager:
             function_name: Function name to call
             args: Function arguments
             chain_id: Optional chain ID to use (if None, uses default)
+            value: Optional native token amount (in wei) to send with the transaction
         
         Returns:
             Transaction hash
@@ -102,12 +103,18 @@ class ContractManager:
         
         # Build transaction
         try:
-            transaction = func(*args).build_transaction({
+            tx_dict = {
                 'from': self.wallet_manager.address,
                 'nonce': web3.eth.get_transaction_count(self.wallet_manager.address),
                 'gas': 500000,  # Adjust as needed
                 'gasPrice': web3.eth.gas_price
-            })
+            }
+            
+            # Add value if specified (for payable functions)
+            if value is not None:
+                tx_dict['value'] = value
+            
+            transaction = func(*args).build_transaction(tx_dict)
         except Exception as e:
             raise ValueError(f'Error building transaction: {str(e)}')
         
@@ -170,7 +177,8 @@ class ContractManager:
             contract_address=contract_address,
             function_name='CrossChainTransfer',
             args=args,
-            chain_id=source_chain_id
+            chain_id=source_chain_id,
+            value=native_fee  # Pass native fee as value for payable function
         )
     
     def transfer(
@@ -357,4 +365,63 @@ class ContractManager:
                 'received': False,
                 'error': str(e)
             }
+    
+    def get_quote_native_fee(
+        self,
+        contract_address,
+        source_chain_id,
+        destination_chain_id,
+        amount,
+        target_address
+    ):
+        """
+        Query the native fee required for cross-chain transfer.
+        
+        Args:
+            contract_address: PyPay contract address
+            source_chain_id: Source chain ID
+            destination_chain_id: Destination chain ID  
+            amount: Amount to transfer
+            target_address: Target address
+        
+        Returns:
+            Native fee in wei (as int)
+        """
+        try:
+            web3_source = self.get_web3_for_chain(source_chain_id)
+            
+            # Load PyPay ABI
+            pypay_abi = [
+                {
+                    "inputs": [
+                        {"internalType": "uint256", "name": "sourceChainId", "type": "uint256"},
+                        {"internalType": "uint256", "name": "destinationChainId", "type": "uint256"},
+                        {"internalType": "uint256", "name": "amount", "type": "uint256"},
+                        {"internalType": "address", "name": "targetAddress", "type": "address"}
+                    ],
+                    "name": "getQuoteNativeFee",
+                    "outputs": [
+                        {"internalType": "uint256", "name": "nativeFee", "type": "uint256"}
+                    ],
+                    "stateMutability": "view",
+                    "type": "function"
+                }
+            ]
+            
+            contract = web3_source.eth.contract(
+                address=Web3.to_checksum_address(contract_address),
+                abi=pypay_abi
+            )
+            
+            # Call view function
+            native_fee = contract.functions.getQuoteNativeFee(
+                source_chain_id,
+                destination_chain_id,
+                int(amount),
+                Web3.to_checksum_address(target_address)
+            ).call()
+            
+            return native_fee
+        except Exception as e:
+            raise ValueError(f'Error querying native fee: {str(e)}')
 

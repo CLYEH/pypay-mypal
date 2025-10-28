@@ -223,6 +223,53 @@ def check_cross_chain():
             'error': str(e)
         }), 500
 
+@app.route('/estimate-fee', methods=['POST'])
+def estimate_fee():
+    """Estimate native fee for cross-chain transfer by querying the contract."""
+    try:
+        data = request.json
+        
+        required_fields = ['contract_address', 'source_chain_id', 'destination_chain_id', 'amount', 'target_address']
+        missing_fields = [field for field in required_fields if field not in data]
+        if missing_fields:
+            return jsonify({
+                'success': False,
+                'error': f'Missing required fields: {", ".join(missing_fields)}'
+            }), 400
+        
+        contract_address = data['contract_address']
+        source_chain_id = int(data['source_chain_id'])
+        destination_chain_id = int(data['destination_chain_id'])
+        amount = data['amount']
+        target_address = data['target_address']
+        
+        # Query the contract for the actual native fee
+        quote_fee = contract_manager.get_quote_native_fee(
+            contract_address=contract_address,
+            source_chain_id=source_chain_id,
+            destination_chain_id=destination_chain_id,
+            amount=amount,
+            target_address=target_address
+        )
+        
+        # Add 20% buffer for safety
+        estimated_fee = int(quote_fee * 1.2)
+        
+        return jsonify({
+            'success': True,
+            'estimated_fee': str(estimated_fee),
+            'estimated_fee_eth': estimated_fee / 1e18,
+            'quote_fee': str(quote_fee),
+            'quote_fee_eth': quote_fee / 1e18,
+            'note': 'Fee queried from contract with 20% safety buffer'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({'error': 'Not found'}), 404

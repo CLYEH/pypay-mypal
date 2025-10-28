@@ -5,7 +5,7 @@ Update contract addresses here when deploying to different networks
 """
 
 # Factory contract address (same on all chains)
-FACTORY_ADDRESS = '0x6D8913325322690F40e45b38BC039c9F76672fc0'
+FACTORY_ADDRESS = '0x0ece0dca03180c05c8eb91a3790d763ed02d9b55'
 
 # Operator wallet address (backend wallet)
 OPERATOR_ADDRESS = '0x3d94E55a2C3Cf83226b3D056eBeBb43b4731417f'
